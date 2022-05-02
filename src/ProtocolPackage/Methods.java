@@ -177,9 +177,100 @@ public class Methods {
                     .split("\0")[0]);
         }
 
-        System.out.println("Client: " + assembledMessage.toString());
+        System.out.println("Client: "+ decryptMessage(assembledMessage.toString(),MessagingProtocolConfiguration.shift));
+      //  System.out.println("Client: " + assembledMessage.toString());
 
         List<DatagramPacket> clearedList = new ArrayList<DatagramPacket>();
         return clearedList;
     }
+
+    /**
+     *
+     * @return
+     */
+    public static String encryptMessage(String plaintext, int shift){
+        String ciphertext = "";
+        char alphabet;
+        for(int i=0; i < plaintext.length();i++)
+        {
+            // Shift one character at a time
+            alphabet = plaintext.charAt(i);
+
+            // if alphabet lies between a and z
+            if(alphabet >= 'a' && alphabet <= 'z')
+            {
+                // shift alphabet
+                alphabet = (char) (alphabet + shift);
+                // if shift alphabet greater than 'z'
+                if(alphabet > 'z') {
+                    // reshift to starting position
+                    alphabet = (char) (alphabet+'a'-'z'-1);
+                }
+                ciphertext = ciphertext + alphabet;
+            }
+
+            // if alphabet lies between 'A'and 'Z'
+            else if(alphabet >= 'A' && alphabet <= 'Z') {
+                // shift alphabet
+                alphabet = (char) (alphabet + shift);
+
+                // if shift alphabet greater than 'Z'
+                if(alphabet > 'Z') {
+                    //reshift to starting position
+                    alphabet = (char) (alphabet+'A'-'Z'-1);
+                }
+                ciphertext = ciphertext + alphabet;
+            }
+            else {
+                ciphertext = ciphertext + alphabet;
+            }
+
+        }
+
+        return ciphertext;
+    }
+
+    public static String decryptMessage(String ciphertext, int shift){
+        String decryptedMessage = "";
+        for(int i=0; i < ciphertext.length();i++)
+
+        {
+            // Shift one character at a time
+            char alphabet = ciphertext.charAt(i);
+            // if alphabet lies between a and z
+            if(alphabet >= 'a' && alphabet <= 'z')
+            {
+                // shift alphabet
+                alphabet = (char) (alphabet - shift);
+
+                // shift alphabet lesser than 'a'
+                if(alphabet < 'a') {
+                    //reshift to starting position
+                    alphabet = (char) (alphabet-'a'+'z'+1);
+                }
+                decryptedMessage = decryptedMessage + alphabet;
+            }
+            // if alphabet lies between A and Z
+            else if(alphabet >= 'A' && alphabet <= 'Z')
+            {
+                // shift alphabet
+                alphabet = (char) (alphabet - shift);
+
+                //shift alphabet lesser than 'A'
+                if (alphabet < 'A') {
+                    // reshift to starting position
+                    alphabet = (char) (alphabet-'A'+'Z'+1);
+                }
+                decryptedMessage = decryptedMessage + alphabet;
+            }
+            else
+            {
+                decryptedMessage = decryptedMessage + alphabet;
+            }
+        }
+
+        return decryptedMessage;
+    }
+
+
 }

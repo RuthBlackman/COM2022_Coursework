@@ -16,4 +16,6 @@ public class MessagingProtocolConfiguration {
     public static String ownIP = "10.77.12.134";
     public static String GhassanIP = "10.77.118.59";
 
+    public static int shift = 13; //shift used to encyrpt/decrypt messages
+
 }

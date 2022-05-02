@@ -91,7 +91,8 @@ public class Client  {
 
                             List<Packet> packetsToSend = new ArrayList<Packet>(); //stores the packets needed for the message
 
-                            byte messageBuffer[] = message.getBytes(StandardCharsets.UTF_8); //bytes array for the whole message
+                            String encryptedMessage = Methods.encryptMessage(message, MessagingProtocolConfiguration.shift);
+                            byte messageBuffer[] = encryptedMessage.getBytes(StandardCharsets.UTF_8); //bytes array for the whole message
 
                             int headerSize = MessagingProtocolConfiguration.HEADERSIZE; //12 bytes
                             byte packetBuffer[] = new byte[MessagingProtocolConfiguration.BUFFERSIZE]; //header + payload //
