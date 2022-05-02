@@ -7,7 +7,7 @@ public class MessagingProtocolConfiguration {
     public static int ownPort;
     public static int otherPort;
 
-    public static int BUFFERSIZE = 1024;
+    public static int BUFFERSIZE = 20; //change back to 1024
     public static int HEADERSIZE = 12;
 
     public static String address;

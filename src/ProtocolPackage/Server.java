@@ -55,13 +55,17 @@ public class Server extends Thread {
 
                         try {
 
-                            List<byte[]> receivedBuffers = new ArrayList<byte[]>();
+                            List<DatagramPacket> receivedPackets = null;
                             Boolean receivedAllPackets = false;
 
                             InetAddress senderAddress = null;
                             int senderPort = 0;
 
+                            receivedPackets = new ArrayList<DatagramPacket>();
+
                             while(!receivedAllPackets){
+
+                                buffer = new byte[MessagingProtocolConfiguration.BUFFERSIZE];
                                 var incomingPacket = new DatagramPacket(buffer, buffer.length);
                                 serverSocket.receive(incomingPacket);
 
@@ -79,25 +83,26 @@ public class Server extends Thread {
                                 //if the checksum in the header matches the calculated checksum, send ACK:
                                 if(calculatedChecksum == checksum){
                                     Methods.sendACK(senderAddress, senderPort, serverSocket); //send ACK to the sender client
-                                    Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
-                                    receivedBuffers.add(incomingPacket.getData());
-
-
-                                    if(currentPacket == totalPackets){
+                                    //Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
+                                    //System.out.println("current packet: "+  currentPacket);
+                                    //System.out.println("total packets: " + totalPackets );
+                                    receivedPackets.add(incomingPacket);
+                                    /*
+                                    for(DatagramPacket i : receivedPackets){
+                                        System.out.println("Object: " + i);
+                                        System.out.println("current items: " + Methods.getValueFromHeader(i.getData(), "currentPacket"));
+                                    }
+*/
+                                    if(currentPacket == totalPackets){ //if the current packet is the last packet, then we want to break out of the while loop
                                         receivedAllPackets = true;
                                     }
-                                }//else do nothing
+                                }
                             }
 
                             //have now received all packets
-/*
-                            ByteBuffer messageBuffer = null;
-                            for(byte[] b : receivedBuffers){
-                                messageBuffer.put(b);
-                            }
-                            DatagramPacket wholeMessage = new DatagramPacket("hi".getBytes(StandardCharsets.UTF_8), "hi".getBytes(StandardCharsets.UTF_8).length);
-                            Methods.serverSendPacket(wholeMessage, senderAddress, ownPort, serverSocket);
-*/
+                            receivedPackets = Methods.serverAssembleMessage(receivedPackets);
+
+
 
                         }  catch (Exception ex) {
                             System.err.println(

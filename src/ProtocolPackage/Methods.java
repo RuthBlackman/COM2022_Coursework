@@ -6,7 +6,10 @@ import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.sql.SQLOutput;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.zip.CRC32;
 
 public class Methods {
@@ -82,7 +85,9 @@ public class Methods {
         return checksum;
     }
 
-    public static void sendACK(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws IOException {
+    public static void sendACK(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws
+            IOException
+    {
         byte[] message = new byte[MessagingProtocolConfiguration.BUFFERSIZE-MessagingProtocolConfiguration.HEADERSIZE];
         //   byte[] wholePacket = new byte[MessagingProtcolConfiguration.BUFFERSIZE];
         int checksum =0;
@@ -116,7 +121,8 @@ public class Methods {
     }
 
     /*
-    public static void sendGotAll(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws IOException {
+    public static void sendGotAll(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws
+    IOException {
         byte wholePacket[] = new byte[3];
         wholePacket = "Got".getBytes(StandardCharsets.UTF_8);
 
@@ -132,7 +138,9 @@ public class Methods {
      * Method to send the packets from the server to its own client
      * @param incomingPacket
      */
-    public static void serverSendPacket(DatagramPacket incomingPacket, InetAddress clientAddress, int clientPort, DatagramSocket serverSocket) throws IOException {
+    /*
+    public static void serverSendPacket(DatagramPacket incomingPacket, InetAddress clientAddress, int clientPort,
+                                        DatagramSocket serverSocket) throws IOException {
         var message = new String(
                 incomingPacket.getData(),
                 12,
@@ -140,10 +148,38 @@ public class Methods {
                 StandardCharsets.UTF_8
         );
 
-        System.out.println("Client: " + message.split("\0")[0]);
-        var outgoingPacket = new DatagramPacket(incomingPacket.getData(), incomingPacket.getLength(), clientAddress, clientPort
-        );
+        System.out.println("length " + message.length());
+        System.out.println(message.split("\0").length);
 
-        serverSocket.send(outgoingPacket);
+        var justMessage = message.split("\0");
+        if(justMessage.length >0){
+            System.out.println("Client: " + justMessage[0]);
+            var outgoingPacket = new DatagramPacket(incomingPacket.getData(), incomingPacket.getLength(), clientAddress,
+                    clientPort
+            );
+            serverSocket.send(outgoingPacket);
+        }
+    }
+     */
+
+
+    /**
+     * Method to send the packets from the server to its own client
+     * @param receivedPackets
+     */
+    public static List<DatagramPacket> serverAssembleMessage(List<DatagramPacket> receivedPackets){
+        StringBuffer assembledMessage = new StringBuffer();
+
+        for(DatagramPacket packet : receivedPackets){
+            //System.out.println("PACKET: " + Methods.getValueFromHeader(packet.getData(), "currentPacket"));
+            byte[] buffer = packet.getData();
+            assembledMessage.append(new String(buffer, 12, buffer.length-12, StandardCharsets.UTF_8)
+                    .split("\0")[0]);
+        }
+
+        System.out.println("Client: " + assembledMessage.toString());
+
+        List<DatagramPacket> clearedList = new ArrayList<DatagramPacket>();
+        return clearedList;
     }
 }

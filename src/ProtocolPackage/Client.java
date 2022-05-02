@@ -99,7 +99,7 @@ public class Client  {
 
                             int sizeOfPayload = packetBuffer.length - headerSize;
 
-                            int numberPacketsNeeded = 0; //set the default number of packets to be 0
+                            int numberPacketsNeeded = 0; //set the default number of packets to be 1
                             int startOfSlice = 0; //start at the beginning of the message
                             int endOfSlice = sizeOfPayload; //
 
@@ -119,6 +119,7 @@ public class Client  {
                                         endOfSlice = messageBuffer.length;
                                     }else{
                                         endOfSlice += sizeOfPayload;
+
                                     }
 
                                     startOfSlice += sizeOfPayload;
@@ -128,70 +129,103 @@ public class Client  {
 
                             }else{ //only need one packet
                                 payload = messageBuffer;
+                                numberPacketsNeeded = 1;
 
                                 int checksum = Methods.calculateChecksum(payload);
 
                                 Packet packet = new Packet(1, 1, checksum, payload);
                                 packet.setTotalPackets(1);
                                 packetsToSend.add(packet);
+                            //    System.out.println("set current packet: " + packet.getCurrentPacket());
+                             //   System.out.println("set total packets: " + packet.getTotalPackets());
                             }
 
-                            for(Packet p : packetsToSend){
-                                System.out.println("packet: " + p.getCurrentPacket());
-                                p.setTotalPackets(numberPacketsNeeded);
 
-                                // if the payload doesn't take up the rest of the packet, then just add 0s to the array (after where the payload would be)
-                                int sizePayload = p.getPayload().length;
-                                if(sizePayload != packetBuffer.length - headerSize){
-                                    for(int b = 12+sizePayload; b<packetBuffer.length; b++){
-                                        packetBuffer[b] = 0;
+
+                            for(Packet p : packetsToSend) {
+
+                                Boolean received = false;
+
+                                while (!received) {
+
+                                    /*
+                                    Sending packet
+                                     */
+                                 //   System.out.println("packet: " + p.getCurrentPacket());
+                                    p.setTotalPackets(numberPacketsNeeded);
+
+                                    // if the payload doesn't take up the rest of the packet, then just add 0s to the array (after where the payload would be)
+                                    int sizePayload = p.getPayload().length;
+                                    if (sizePayload != packetBuffer.length - headerSize) {
+                                        for (int b = 12 + sizePayload; b < packetBuffer.length; b++) {
+                                            packetBuffer[b] = 0;
+                                        }
+                                    }
+
+                                    //means that the last packet's payload won't include characters from the previous packet's payload
+                                    byte newPayload[] = new byte[packetBuffer.length - headerSize];
+                                    System.arraycopy(p.getPayload(), 0, newPayload, 0, p.getPayload().length);
+
+                                    p.setChecksum(Methods.calculateChecksum(packetBuffer));
+
+                                    ByteBuffer header = ByteBuffer.allocate(headerSize);
+                                    header.putInt(Methods.calculateChecksum(newPayload));
+                                    header.putInt(p.getCurrentPacket());
+                                    header.putInt(p.getTotalPackets());
+
+                                    // now need to combine header and payload into a byte array (packetBuffer), which is sent in
+                                    System.arraycopy(header.array(), 0, packetBuffer, 0, headerSize);
+                                    System.arraycopy(p.getPayload(), 0, packetBuffer, headerSize, p.getPayload().length);
+
+                                    clientSocket.send(new DatagramPacket(
+                                            packetBuffer,
+                                            packetBuffer.length,
+                                            serverAddress,
+                                            otherPort));
+
+                                //    System.out.println("sent packet");
+
+
+
+
+                                    /*
+                                    Receiving ACK
+                                     */
+                                    try{
+                                        Thread.sleep(1000);
+                                    } catch (InterruptedException e) {
+                                        e.printStackTrace();
+                                    }
+
+                                    //receive packet from server
+                                    var incomingPacket = new DatagramPacket(
+                                            buffer,
+                                            buffer.length,
+                                            serverAddress,
+                                            ownPort
+                                    );
+
+                                    clientSocket.receive(incomingPacket);
+
+                                    // Convert the raw bytes into a String.
+                                    var serverResponse = Methods.getPayloadFromPacket(incomingPacket.getData());
+
+                                    var messageResponse = new String(
+                                            incomingPacket.getData(), 0, 3,
+                                            StandardCharsets.UTF_8
+                                    );
+
+                                //    System.out.println("server response: " + messageResponse);
+                                //    System.out.println("\n");
+
+                                    if(messageResponse.equals("ACK")){
+                                        received = true;
+
                                     }
                                 }
-
-                                //means that the last packet's payload won't include characters from the previous packet's payload
-                                byte newPayload[] = new byte[packetBuffer.length-headerSize];
-                                System.arraycopy(p.getPayload(), 0, newPayload, 0, p.getPayload().length);
-
-                                p.setChecksum(Methods.calculateChecksum(packetBuffer));
-
-                                ByteBuffer header = ByteBuffer.allocate(headerSize);
-                                header.putInt(Methods.calculateChecksum(newPayload));
-                                header.putInt(p.getCurrentPacket());
-                                header.putInt(p.getTotalPackets());
-
-                                // now need to combine header and payload into a byte array (packetBuffer), which is sent in
-                                System.arraycopy(header.array(), 0, packetBuffer, 0, headerSize);
-                                System.arraycopy(p.getPayload(), 0, packetBuffer, headerSize, p.getPayload().length);
-
-                                clientSocket.send(new DatagramPacket(
-                                        packetBuffer,
-                                        packetBuffer.length,
-                                        serverAddress,
-                                        otherPort));
-
-                                System.out.println("sent packet");
-
-                                //receive packet from server
-                                var incomingPacket = new DatagramPacket(
-                                        buffer,
-                                        buffer.length,
-                                        serverAddress,
-                                        ownPort
-                                );
-
-                                clientSocket.receive(incomingPacket);
-
-                                // Convert the raw bytes into a String.
-                                var serverResponse = Methods.getPayloadFromPacket(incomingPacket.getData());
-
-                                var messageResponse = new String(
-                                        incomingPacket.getData(), 0, incomingPacket.getLength(),
-                                        StandardCharsets.UTF_8
-                                );
-
-                                System.out.println("server response: " + messageResponse);
-                                System.out.println("\n");
+                                packetsToSend = new ArrayList<Packet>();
                             }
+                            numberPacketsNeeded = 0;
                         }
 
                     } catch (IOException ex) {
