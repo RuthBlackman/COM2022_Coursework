@@ -7,10 +7,13 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Random;
 
 public class Client  {
 
-    public static final String SERVER_HOSTNAME = "localhost";
+    public static final String SERVER_HOSTNAME = MessagingProtocolConfiguration.ownAddress; //"localhost"
+
+    public static final String OTHER_CLIENT_ADDRESS = MessagingProtocolConfiguration.connectedToAddress;
 
     //int PORT = MessagingProtcolConfiguration.PORT;
     DatagramSocket clientSocket;
@@ -20,6 +23,8 @@ public class Client  {
 
     int ownPort = MessagingProtocolConfiguration.ownPort;
     int otherPort = MessagingProtocolConfiguration.otherPort;
+
+    int previousID =0;
 
     /**
      *
@@ -94,7 +99,7 @@ public class Client  {
                             String encryptedMessage = Methods.encryptMessage(message, MessagingProtocolConfiguration.shift);
                             byte messageBuffer[] = encryptedMessage.getBytes(StandardCharsets.UTF_8); //bytes array for the whole message
 
-                            int headerSize = MessagingProtocolConfiguration.HEADERSIZE; //12 bytes
+                            int headerSize = MessagingProtocolConfiguration.HEADERSIZE; //16 bytes
                             byte packetBuffer[] = new byte[MessagingProtocolConfiguration.BUFFERSIZE]; //header + payload //
                             byte payload[] = new byte[packetBuffer.length-headerSize];
 
@@ -104,15 +109,27 @@ public class Client  {
                             int startOfSlice = 0; //start at the beginning of the message
                             int endOfSlice = sizeOfPayload; //
 
+                            int currentID =0; //ID of the current message
+                            //ID of previous message's id - don't want this id to be repeated
+
+                            Random rand = new Random();
+
                             if((messageBuffer.length + headerSize) > packetBuffer.length){ //need multiple packets
                                 while(startOfSlice <= messageBuffer.length){
                                     payload = new byte[packetBuffer.length-headerSize];
                                     numberPacketsNeeded++;
 
+                                    if(currentID == 0){
+                                        currentID = rand.nextInt();
+                                        while(currentID == previousID){
+                                            currentID = rand.nextInt();
+                                        }
+                                    }
+
                                     payload = Arrays.copyOfRange(messageBuffer, startOfSlice, endOfSlice);
                                     int currentPacket = numberPacketsNeeded;
 
-                                    Packet packet = new Packet(currentPacket, Arrays.copyOfRange(payload, 0, payload.length));
+                                    Packet packet = new Packet(currentID, currentPacket, Arrays.copyOfRange(payload, 0, payload.length));
 
                                     packetsToSend.add(packet);
 
@@ -132,9 +149,14 @@ public class Client  {
                                 payload = messageBuffer;
                                 numberPacketsNeeded = 1;
 
+                                currentID = Math.abs(rand.nextInt());
+                                while(currentID == previousID){
+                                    currentID = Math.abs(rand.nextInt());
+                                }
+
                                 int checksum = Methods.calculateChecksum(payload);
 
-                                Packet packet = new Packet(1, 1, checksum, payload);
+                                Packet packet = new Packet(currentID,1, 1, checksum, payload);
                                 packet.setTotalPackets(1);
                                 packetsToSend.add(packet);
                             //    System.out.println("set current packet: " + packet.getCurrentPacket());
@@ -152,13 +174,13 @@ public class Client  {
                                     /*
                                     Sending packet
                                      */
-                                 //   System.out.println("packet: " + p.getCurrentPacket());
+          //                          System.out.println("packet: " + p.getCurrentPacket());
                                     p.setTotalPackets(numberPacketsNeeded);
 
                                     // if the payload doesn't take up the rest of the packet, then just add 0s to the array (after where the payload would be)
                                     int sizePayload = p.getPayload().length;
                                     if (sizePayload != packetBuffer.length - headerSize) {
-                                        for (int b = 12 + sizePayload; b < packetBuffer.length; b++) {
+                                        for (int b = 16 + sizePayload; b < packetBuffer.length; b++) {
                                             packetBuffer[b] = 0;
                                         }
                                     }
@@ -170,6 +192,7 @@ public class Client  {
                                     p.setChecksum(Methods.calculateChecksum(packetBuffer));
 
                                     ByteBuffer header = ByteBuffer.allocate(headerSize);
+                                    header.putInt(p.getID());
                                     header.putInt(Methods.calculateChecksum(newPayload));
                                     header.putInt(p.getCurrentPacket());
                                     header.putInt(p.getTotalPackets());
@@ -178,15 +201,21 @@ public class Client  {
                                     System.arraycopy(header.array(), 0, packetBuffer, 0, headerSize);
                                     System.arraycopy(p.getPayload(), 0, packetBuffer, headerSize, p.getPayload().length);
 
+//                                    System.out.println("ID:  " + Methods.getValueFromHeader(packetBuffer, "ID"));
+ //                                   System.out.println("Checksum: " + Methods.getValueFromHeader(packetBuffer, "checksum"));
+  //                                  System.out.println("Current: " + Methods.getValueFromHeader(packetBuffer, "currentPacket"));
+   //                                 System.out.println("Total: " + Methods.getValueFromHeader(packetBuffer, "totalPackets"));
+     //                               System.out.println("Message:" + Methods.getPayloadFromPacket(packetBuffer));
+
                                     clientSocket.send(new DatagramPacket(
                                             packetBuffer,
                                             packetBuffer.length,
                                             serverAddress,
                                             otherPort));
 
-                                //    System.out.println("sent packet");
 
-
+       //                             System.out.println("sent packet");
+                                    System.out.println("Client 1 sent packet  " + Methods.getValueFromHeader(packetBuffer, "currentPacket"));
 
 
                                     /*

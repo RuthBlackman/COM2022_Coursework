@@ -1,5 +1,6 @@
 package ProtocolPackage;
 
+import javax.xml.crypto.Data;
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -56,12 +57,14 @@ public class Server extends Thread {
                         try {
 
                             List<DatagramPacket> receivedPackets = null;
+                            List<DatagramPacket> packetsForMessage = null;
                             Boolean receivedAllPackets = false;
 
                             InetAddress senderAddress = null;
                             int senderPort = 0;
 
                             receivedPackets = new ArrayList<DatagramPacket>();
+                            packetsForMessage = new ArrayList<DatagramPacket>();
 
                             while(!receivedAllPackets){
 
@@ -73,12 +76,16 @@ public class Server extends Thread {
                                 senderPort = incomingPacket.getPort();
 
                                 // get packet details
+                                int ID = Methods.getValueFromHeader(incomingPacket.getData(), "ID");
                                 int checksum = Methods.getValueFromHeader(incomingPacket.getData(),"checksum");
                                 int currentPacket = Methods.getValueFromHeader(incomingPacket.getData(),"currentPacket");
                                 int totalPackets = Methods.getValueFromHeader(incomingPacket.getData(),"totalPackets");
 
                                 int calculatedChecksum = Methods.calculateChecksum(incomingPacket.getData());
+               //                 System.out.println("current packet: " +currentPacket);
 
+                                //System.out.println("Server calculated checksum: " + calculatedChecksum);
+                                //System.out.println("Checksum sent in header: " + checksum);
 
                                 //if the checksum in the header matches the calculated checksum, send ACK:
                                 if(calculatedChecksum == checksum){
@@ -86,7 +93,13 @@ public class Server extends Thread {
                                     //Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
                                     //System.out.println("current packet: "+  currentPacket);
                                     //System.out.println("total packets: " + totalPackets );
+                                    //System.out.println("Checksums match");
                                     receivedPackets.add(incomingPacket);
+                                    System.out.println("Client 2 received packet " + currentPacket);
+                                //    System.out.println("ID: " + ID);
+                                //    System.out.println("checksum: " + checksum);
+                                //    System.out.println("current packet: " + currentPacket);
+                                //   System.out.println("total packets: " + totalPackets);
                                     /*
                                     for(DatagramPacket i : receivedPackets){
                                         System.out.println("Object: " + i);
@@ -96,11 +109,26 @@ public class Server extends Thread {
                                     if(currentPacket == totalPackets){ //if the current packet is the last packet, then we want to break out of the while loop
                                         receivedAllPackets = true;
                                     }
+                                }else{
+                                    //System.out.println("Checksums don't match");
+                                    //System.out.println("Packet not accepted");
+                                }
+                            }
+
+                            for(DatagramPacket p : receivedPackets){
+                                if(packetsForMessage.size() == 0){
+                                    packetsForMessage.add(p);
+                                }else{
+                                    if(Methods.getValueFromHeader(packetsForMessage.get(0).getData(), "ID") == Methods.getValueFromHeader(p.getData(), "ID")){
+                                        packetsForMessage.add(p);
+                                    }
+
                                 }
                             }
 
                             //have now received all packets
-                            receivedPackets = Methods.serverAssembleMessage(receivedPackets);
+                            //receivedPackets = Methods.serverAssembleMessage(receivedPackets);
+                            receivedPackets = Methods.serverAssembleMessage(packetsForMessage);
 
 
 

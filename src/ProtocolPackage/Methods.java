@@ -10,6 +10,7 @@ import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.zip.CRC32;
 
 public class Methods {
@@ -25,20 +26,24 @@ public class Methods {
         int value;
 
         switch(option){
-            case "checksum":
+            case "ID":
                 tempArray = Arrays.copyOfRange(packetBuffer, 0, 4);
                 value = ByteBuffer.wrap(tempArray).getInt();
                 break;
-            case "currentPacket":
+            case "checksum":
                 tempArray = Arrays.copyOfRange(packetBuffer, 4, 8);
                 value = ByteBuffer.wrap(tempArray).getInt();
                 break;
-            case "totalPackets":
+            case "currentPacket":
                 tempArray = Arrays.copyOfRange(packetBuffer, 8, 12);
                 value = ByteBuffer.wrap(tempArray).getInt();
                 break;
+            case "totalPackets":
+                tempArray = Arrays.copyOfRange(packetBuffer, 12, 16);
+                value = ByteBuffer.wrap(tempArray).getInt();
+                break;
             case "payload":
-                tempArray = Arrays.copyOfRange(packetBuffer, 12, packetBuffer.length);
+                tempArray = Arrays.copyOfRange(packetBuffer, 16, packetBuffer.length);
                 value = ByteBuffer.wrap(tempArray).getInt();
                 break;
             default:
@@ -58,7 +63,7 @@ public class Methods {
         String message;
         byte tempArray[];
 
-        tempArray = Arrays.copyOfRange(packetBuffer, 12, packetBuffer.length);
+        tempArray = Arrays.copyOfRange(packetBuffer, MessagingProtocolConfiguration.HEADERSIZE, packetBuffer.length);
         message = new String(tempArray, StandardCharsets.UTF_8);
         return message;
     }
@@ -69,10 +74,12 @@ public class Methods {
         int checksum = 0;
 
 
+//        System.out.println("Calculating checksum for packet " + Methods.getValueFromHeader(buffer,"currentPacket"));
+
 
         if(buffer.length == MessagingProtocolConfiguration.BUFFERSIZE){
             byte[] temp;
-            temp = Arrays.copyOfRange(buffer, 12, buffer.length);
+            temp = Arrays.copyOfRange(buffer, MessagingProtocolConfiguration.HEADERSIZE, buffer.length);
 
             crc.update(temp);
             checksum = (int)crc.getValue();
@@ -82,16 +89,18 @@ public class Methods {
 
         }
 
+        //System.out.println("checksum: " + checksum);
         return checksum;
     }
 
     public static void sendACK(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws
             IOException
     {
+        /*
         byte[] message = new byte[MessagingProtocolConfiguration.BUFFERSIZE-MessagingProtocolConfiguration.HEADERSIZE];
         //   byte[] wholePacket = new byte[MessagingProtcolConfiguration.BUFFERSIZE];
         int checksum =0;
-
+*/
         /*
         message = "ACK".getBytes(StandardCharsets.UTF_8);
         checksum = Methods.calculateChecksum(message);
@@ -173,7 +182,7 @@ public class Methods {
         for(DatagramPacket packet : receivedPackets){
             //System.out.println("PACKET: " + Methods.getValueFromHeader(packet.getData(), "currentPacket"));
             byte[] buffer = packet.getData();
-            assembledMessage.append(new String(buffer, 12, buffer.length-12, StandardCharsets.UTF_8)
+            assembledMessage.append(new String(buffer, MessagingProtocolConfiguration.HEADERSIZE, buffer.length-MessagingProtocolConfiguration.HEADERSIZE, StandardCharsets.UTF_8)
                     .split("\0")[0]);
         }
 
@@ -272,5 +281,10 @@ public class Methods {
         return decryptedMessage;
     }
 
+    private static final Pattern PATTERN = Pattern.compile("^(([01]?\\d\\d?|2[0-4]\\d|25[0-5])\\.){3}([01]?\\d\\d?|2[0-4]\\d|25[0-5])$");
+
+    public static boolean validate(final String ip) {
+        return PATTERN.matcher(ip).matches();
+    }
 
 }

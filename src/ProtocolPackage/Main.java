@@ -22,6 +22,26 @@ public class Main {
         System.out.println("your port is " + MessagingProtocolConfiguration.ownPort);
         System.out.println("Talking to port " + MessagingProtocolConfiguration.otherPort );
 
+        System.out.println("Enter the IP address to connect: ");
+        String connectedToAddress = reader.readLine();
+
+        while(!Methods.validate(connectedToAddress)){
+            System.out.println("Invalid IP address. Please try again: ");
+            connectedToAddress = reader.readLine();
+        }
+
+        MessagingProtocolConfiguration.connectedToAddress = connectedToAddress;
+        System.out.println("Connecting to: " + MessagingProtocolConfiguration.connectedToAddress);
+
+        /*
+        if (Methods.validate(MessagingProtocolConfiguration.connectedToAddress)) {
+            System.out.println("Connecting to: " + MessagingProtocolConfiguration.connectedToAddress);
+        }else{
+            System.out.println("invalid IP address");
+        }
+*/
+
+
 
         Client client = new Client();
         client.start();
