@@ -2,11 +2,10 @@ package ProtocolPackage;
 
 import javax.xml.crypto.Data;
 import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.SocketException;
+import java.net.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 
 public class Server extends Thread {
@@ -22,35 +21,40 @@ public class Server extends Thread {
             public void run(){
 
                 DatagramSocket serverSocket = null;
-              //  int PORT = MessagingProtocolConfiguration.PORT;
+                int PORT = MessagingProtocolConfiguration.PORT;
 
+                List<String> clientAddresses = new ArrayList<String>();
+                List<String> clientPorts = new ArrayList<String>();
+                HashSet<ConnectedClient> existingClients = new HashSet<ConnectedClient>();
+/*
                 int ownPort = MessagingProtocolConfiguration.ownPort;
                 int otherPort = MessagingProtocolConfiguration.otherPort;
-
+*/
                 InetAddress ownAddress;
 
                 if (serverSocket != null) return;
 
                 try {
-
-                    serverSocket = new DatagramSocket(ownPort);
+                    serverSocket = new DatagramSocket(PORT); //own port
 
                     System.out.println("Starting server...");
 
-                    System.out.println("Now listening on port " + ownPort + "!");
+                    System.out.println("Now listening on port " + PORT + "!"); //own port
+                    System.out.println("The address is " + serverSocket.getLocalAddress());
+
 
                     byte[] buffer = new byte[MessagingProtocolConfiguration.BUFFERSIZE];
 
 
-
+/*
                     //first packet from own client
                     var firstPacket = new DatagramPacket(buffer, buffer.length);
                     serverSocket.receive(firstPacket);
 
                     ownAddress = firstPacket.getAddress();
-                    ownPort = firstPacket.getPort();
+                    PORT = firstPacket.getPort(); //OWN PORT
 
-
+*/
 
                     while (!serverSocket.isClosed()) {
 
@@ -75,43 +79,94 @@ public class Server extends Thread {
                                 senderAddress = incomingPacket.getAddress();
                                 senderPort = incomingPacket.getPort();
 
-                                // get packet details
-                                int ID = Methods.getValueFromHeader(incomingPacket.getData(), "ID");
-                                int checksum = Methods.getValueFromHeader(incomingPacket.getData(),"checksum");
-                                int currentPacket = Methods.getValueFromHeader(incomingPacket.getData(),"currentPacket");
-                                int totalPackets = Methods.getValueFromHeader(incomingPacket.getData(),"totalPackets");
+                                //check whether client sent NEW, ALV or BYE
+                                if(incomingPacket.getLength() == 3){
+                                    var signal = new String(incomingPacket.getData(), 0, 3, StandardCharsets.UTF_8);
+                                    ConnectedClient connect = new ConnectedClient(incomingPacket.getAddress(), incomingPacket.getPort());
+                                    switch (signal) {
+                                        case "NEW" -> {
+                                            System.out.println("NEW signal received");
+                                            byte[] payload = new byte[]{'A', 'L', 'V'};
+                                            existingClients.add(connect);
+                                            for (var connectedClient : existingClients) {
+                                                try {
+                                                    //payload = "ALV".getBytes(StandardCharsets.UTF_8);
+                                                    serverSocket.send(new DatagramPacket(payload, payload.length, connectedClient.address, connectedClient.port));
+                                                } catch (Exception ex) {
+                                                    ex.printStackTrace();
+                                                }
+                                            }
+                                            existingClients.clear();
+                                        }
+                                        case "ALV" -> {
+                                            System.out.println("ALV signal received");
+                                            existingClients.add(connect);
+                                        }
 
-                                int calculatedChecksum = Methods.calculateChecksum(incomingPacket.getData());
-               //                 System.out.println("current packet: " +currentPacket);
+                                        case "BYE" -> existingClients.remove(connect);
+                                    }
 
-                                //System.out.println("Server calculated checksum: " + calculatedChecksum);
-                                //System.out.println("Checksum sent in header: " + checksum);
+                                }else {
 
-                                //if the checksum in the header matches the calculated checksum, send ACK:
-                                if(calculatedChecksum == checksum){
-                                    Methods.sendACK(senderAddress, senderPort, serverSocket); //send ACK to the sender client
-                                    //Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
-                                    //System.out.println("current packet: "+  currentPacket);
-                                    //System.out.println("total packets: " + totalPackets );
-                                    //System.out.println("Checksums match");
-                                    receivedPackets.add(incomingPacket);
-                                    System.out.println("Client 2 received packet " + currentPacket);
-                                //    System.out.println("ID: " + ID);
-                                //    System.out.println("checksum: " + checksum);
-                                //    System.out.println("current packet: " + currentPacket);
-                                //   System.out.println("total packets: " + totalPackets);
+
+                                    // get packet details
+                                    int ID = Methods.getValueFromHeader(incomingPacket.getData(), "ID");
+                                    int checksum = Methods.getValueFromHeader(incomingPacket.getData(), "checksum");
+                                    int currentPacket = Methods.getValueFromHeader(incomingPacket.getData(), "currentPacket");
+                                    int totalPackets = Methods.getValueFromHeader(incomingPacket.getData(), "totalPackets");
+
+                                    int calculatedChecksum = Methods.calculateChecksum(incomingPacket.getData());
+                                    //                 System.out.println("current packet: " +currentPacket);
+
+                                    System.out.println("Server calculated checksum: " + calculatedChecksum);
+                                    System.out.println("Checksum sent in header: " + checksum);
+
+                                    //if the checksum in the header matches the calculated checksum, send ACK:
+                                    if (calculatedChecksum == checksum) {
+                                        //Methods.sendACK(senderAddress, senderPort, serverSocket); //send ACK to the sender client
+                                        //Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
+                                        //System.out.println("current packet: "+  currentPacket);
+                                        //System.out.println("total packets: " + totalPackets );
+                               //         System.out.println("Checksums match");
+
+                               //         System.out.println("Sending ACK");
+                                        byte[] wholePacket = new byte[3];
+                                        wholePacket = "ACK".getBytes(StandardCharsets.UTF_8);
+
+                                        serverSocket.send(new DatagramPacket(
+                                                wholePacket,
+                                                wholePacket.length,
+                                                senderAddress,
+                                                senderPort));
+
+                              //          System.out.println("Packet received");
+                                        receivedPackets.add(incomingPacket);
+                                      //  System.out.println("Client 2 received packet " + currentPacket);
+                                        System.out.println(senderAddress + " " + Methods.getPayloadFromPacket(incomingPacket.getData()).split("\0")[0]);
+                                        //    System.out.println("ID: " + ID);
+                                        //    System.out.println("checksum: " + checksum);
+                                        //    System.out.println("current packet: " + currentPacket);
+                                        //   System.out.println("total packets: " + totalPackets);
                                     /*
                                     for(DatagramPacket i : receivedPackets){
                                         System.out.println("Object: " + i);
                                         System.out.println("current items: " + Methods.getValueFromHeader(i.getData(), "currentPacket"));
                                     }
+
+
 */
-                                    if(currentPacket == totalPackets){ //if the current packet is the last packet, then we want to break out of the while loop
-                                        receivedAllPackets = true;
+                                        for(ConnectedClient CC : existingClients){
+                                            serverSocket.send(new DatagramPacket(buffer, buffer.length, CC.address, CC.port));
+                                        }
+
+                                        if (currentPacket == totalPackets) { //if the current packet is the last packet, then we want to break out of the while loop
+                                            receivedAllPackets = true;
+
+                                        }
+                                    } else {
+                                        System.out.println("Checksums don't match");
+                                        System.out.println("Packet not accepted");
                                     }
-                                }else{
-                                    //System.out.println("Checksums don't match");
-                                    //System.out.println("Packet not accepted");
                                 }
                             }
 
@@ -121,6 +176,7 @@ public class Server extends Thread {
                                 }else{
                                     if(Methods.getValueFromHeader(packetsForMessage.get(0).getData(), "ID") == Methods.getValueFromHeader(p.getData(), "ID")){
                                         packetsForMessage.add(p);
+
                                     }
 
                                 }
@@ -128,7 +184,11 @@ public class Server extends Thread {
 
                             //have now received all packets
                             //receivedPackets = Methods.serverAssembleMessage(receivedPackets);
-                            receivedPackets = Methods.serverAssembleMessage(packetsForMessage);
+                            System.out.println("before assemble method");
+                            //receivedPackets = Methods.serverAssembleMessage(packetsForMessage);
+                            for(ConnectedClient CC : existingClients){
+                                serverSocket.send(new DatagramPacket(buffer, buffer.length, CC.address, CC.port));
+                            }
 
 
 
@@ -155,6 +215,11 @@ public class Server extends Thread {
         }).start();
 
 
+    }
+
+    public static void main(String[] args){
+        Server server = new Server();
+        server.start();
     }
 
 }
