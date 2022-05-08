@@ -18,14 +18,9 @@ public class Client {
     String name = null;
     DatagramSocket localSocketAddress;
 
-    /*
-        int ownPort = MessagingProtocolConfiguration.ownPort;
-        int otherPort = MessagingProtocolConfiguration.otherPort;
-    */
     int previousID = 0;
 
     public Client(DatagramSocket clientSocket) {
-        // Initialize the client socket.
         this.clientSocket = clientSocket;
     }
 
@@ -43,10 +38,6 @@ public class Client {
         return _waitingForAcks > 0;
     }
 
-    /**
-     *
-     * Bunch of setters and getters for the client object
-     */
 
     /**
      * Start the client.
@@ -153,8 +144,7 @@ public class Client {
                             Packet packet = new Packet(currentID, numberPacketsNeeded++, 1, checksum, payload);
                             packet.setTotalPackets(1);
                             packetsToSend.add(packet);
-                            //    System.out.println("set current packet: " + packet.getCurrentPacket());
-                            //   System.out.println("set total packets: " + packet.getTotalPackets());
+
                         }
 
 
@@ -167,7 +157,7 @@ public class Client {
                                 /*
                                 Sending packet
                                  */
-                                //                          System.out.println("packet: " + p.getCurrentPacket());
+
                                 p.setTotalPackets(numberPacketsNeeded);
 
                                 // if the payload doesn't take up the rest of the packet, then just add 0s to the array (after where the payload would be)
@@ -187,7 +177,6 @@ public class Client {
                                 ByteBuffer header = ByteBuffer.allocate(headerSize);
                                 header.putInt(p.getID());
                                 header.putInt(Methods.calculateChecksum(newPayload));
-                                //header.putInt(3);
                                 header.putInt(p.getCurrentPacket());
                                 header.putInt(p.getTotalPackets());
 
@@ -195,29 +184,18 @@ public class Client {
                                 System.arraycopy(header.array(), 0, packetBuffer, 0, headerSize);
                                 System.arraycopy(p.getPayload(), 0, packetBuffer, headerSize, p.getPayload().length);
 
-                      //          System.out.println("ID:  " + Methods.getValueFromHeader(packetBuffer, "ID"));
-                      //          System.out.println("Checksum: " + Methods.getValueFromHeader(packetBuffer, "checksum"));
-                      //          System.out.println("Current: " + Methods.getValueFromHeader(packetBuffer, "currentPacket"));
-                      //          System.out.println("Total: " + Methods.getValueFromHeader(packetBuffer, "totalPackets"));
-                                //                               System.out.println("Message:" + Methods.getPayloadFromPacket(packetBuffer));
                                 requestAck();
                                 clientSocket.send(new DatagramPacket(
                                         packetBuffer,
                                         packetBuffer.length,
                                         remoteServerAddress,
                                         PORT
-                                )); //otherPort
+                                ));
                                 System.out.println("Sending packet");
-
-                                //                             System.out.println("sent packet");
-                            //    System.out.println("Client 1 sent packet  " + Methods.getValueFromHeader(packetBuffer, "currentPacket"));
-
 
                                 /*
                                  Receiving ACK
                                  */
-
-//                                System.out.println("Waiting for ACK");
 
                                 //requestAck();
                                 while (isWaitingForAck()) {
@@ -227,33 +205,6 @@ public class Client {
                                     } catch (InterruptedException ignored) {
                                     }
                                 }
-
-  //                              System.out.println("Received ACK");
-
-//
-//                                //receive packet from server
-//                                var incomingPacket = new DatagramPacket(
-//                                        buffer,
-//                                        buffer.length,
-//                                        remoteServerAddress,
-//                                        PORT
-//                                ); //OWN PORT
-//
-//                                clientSocket.receive(incomingPacket);
-//
-//                                // Convert the raw bytes into a String.
-//                                var messageResponse = new String(
-//                                        incomingPacket.getData(), 0, 3,
-//                                        StandardCharsets.UTF_8
-//                                );
-//
-//                                //    System.out.println("server response: " + messageResponse);
-//                                //    System.out.println("\n");
-//
-//                                if (messageResponse.equals("ACK")) {
-//                                    received = true;
-//                                    System.out.println("Received ACK");
-//                                }
 
                                 received = true;
                             }
@@ -294,11 +245,6 @@ class ClientReceive extends Thread {
     public void run() {
         while (!clientReceiveSocket.isClosed()) {
             try {
-//                DatagramPacket dp = new DatagramPacket(buffer, buffer.length);
-//                clientReceiveSocket.receive(dp);
-
-//                if (dp.getLength() == 3) continue;
-
 
                 List<DatagramPacket> receivedPackets = null;
                 List<DatagramPacket> packetsForMessage = null;
@@ -319,7 +265,6 @@ class ClientReceive extends Thread {
                     if (incomingPacket.getLength() == 3) {
                         var signal = new String(incomingPacket.getData(), 0, 3, StandardCharsets.UTF_8);
                         if (signal.equals("ACK")) {
-                         //   System.out.println("client received ack: " + Client.isWaitingForAck());
                             Client.registerAck();
                             continue;
                         } else if (signal.equals("ALV")) {

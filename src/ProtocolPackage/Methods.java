@@ -72,9 +72,6 @@ public class Methods {
         int checksum = 0;
 
 
-//        System.out.println("Calculating checksum for packet " + Methods.getValueFromHeader(buffer,"currentPacket"));
-
-
         if (buffer.length == MessagingProtocolConfiguration.BUFFERSIZE) {
             byte[] temp;
             temp = Arrays.copyOfRange(buffer, MessagingProtocolConfiguration.HEADERSIZE, buffer.length);
@@ -87,13 +84,12 @@ public class Methods {
 
         }
 
-        //System.out.println("checksum: " + checksum);
         return checksum;
     }
 
     public static void sendACK(InetAddress senderAddress, int senderPort, DatagramSocket serverSocket) throws
             IOException {
-     //   System.out.println("Sending ACK");
+
         byte[] wholePacket = new byte[3];
         wholePacket = "ACK".getBytes(StandardCharsets.UTF_8);
 
@@ -118,13 +114,12 @@ public class Methods {
         StringBuffer assembledMessage = new StringBuffer();
 
         for (DatagramPacket packet : receivedPackets) {
-            //System.out.println("PACKET: " + Methods.getValueFromHeader(packet.getData(), "currentPacket"));
+
             byte[] buffer = packet.getData();
             assembledMessage.append(new String(buffer, MessagingProtocolConfiguration.HEADERSIZE, buffer.length - MessagingProtocolConfiguration.HEADERSIZE, StandardCharsets.UTF_8)
                     .split("\0")[0]);
         }
 
-        //  System.out.println("Client: "+ decryptMessage(assembledMessage.toString(),MessagingProtocolConfiguration.shift));
         System.out.println("Client: " + assembledMessage.toString());
 
         List<DatagramPacket> clearedList = new ArrayList<DatagramPacket>();

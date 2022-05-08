@@ -26,35 +26,21 @@ public class Server extends Thread {
                 List<String> clientAddresses = new ArrayList<String>();
                 List<String> clientPorts = new ArrayList<String>();
                 HashSet<ConnectedClient> existingClients = new HashSet<ConnectedClient>();
-/*
-                int ownPort = MessagingProtocolConfiguration.ownPort;
-                int otherPort = MessagingProtocolConfiguration.otherPort;
-*/
+
                 InetAddress ownAddress;
 
                 if (serverSocket != null) return;
 
                 try {
-                    serverSocket = new DatagramSocket(PORT); //own port
+                    serverSocket = new DatagramSocket(PORT);
 
                     System.out.println("Starting server...");
 
-                    System.out.println("Now listening on port " + PORT + "!"); //own port
+                    System.out.println("Now listening on port " + PORT + "!");
                     System.out.println("The address is " + serverSocket.getLocalAddress());
 
 
                     byte[] buffer = new byte[MessagingProtocolConfiguration.BUFFERSIZE];
-
-
-/*
-                    //first packet from own client
-                    var firstPacket = new DatagramPacket(buffer, buffer.length);
-                    serverSocket.receive(firstPacket);
-
-                    ownAddress = firstPacket.getAddress();
-                    PORT = firstPacket.getPort(); //OWN PORT
-
-*/
 
                     while (!serverSocket.isClosed()) {
 
@@ -90,7 +76,6 @@ public class Server extends Thread {
                                             existingClients.add(connect);
                                             for (var connectedClient : existingClients) {
                                                 try {
-                                                    //payload = "ALV".getBytes(StandardCharsets.UTF_8);
                                                     serverSocket.send(new DatagramPacket(payload, payload.length, connectedClient.address, connectedClient.port));
                                                 } catch (Exception ex) {
                                                     ex.printStackTrace();
@@ -123,13 +108,6 @@ public class Server extends Thread {
 
                                     //if the checksum in the header matches the calculated checksum, send ACK:
                                     if (calculatedChecksum == checksum) {
-                                        //Methods.sendACK(senderAddress, senderPort, serverSocket); //send ACK to the sender client
-                                        //Methods.serverSendPacket(incomingPacket, senderAddress, ownPort, serverSocket); //send message to own client
-                                        //System.out.println("current packet: "+  currentPacket);
-                                        //System.out.println("total packets: " + totalPackets );
-                               //         System.out.println("Checksums match");
-
-                               //         System.out.println("Sending ACK");
                                         byte[] wholePacket = new byte[3];
                                         wholePacket = "ACK".getBytes(StandardCharsets.UTF_8);
 
@@ -139,22 +117,9 @@ public class Server extends Thread {
                                                 senderAddress,
                                                 senderPort));
 
-                              //          System.out.println("Packet received");
                                         receivedPackets.add(incomingPacket);
-                                      //  System.out.println("Client 2 received packet " + currentPacket);
                                         System.out.println(senderAddress + " " + Methods.getPayloadFromPacket(incomingPacket.getData()).split("\0")[0]);
-                                        //    System.out.println("ID: " + ID);
-                                        //    System.out.println("checksum: " + checksum);
-                                        //    System.out.println("current packet: " + currentPacket);
-                                        //   System.out.println("total packets: " + totalPackets);
-                                    /*
-                                    for(DatagramPacket i : receivedPackets){
-                                        System.out.println("Object: " + i);
-                                        System.out.println("current items: " + Methods.getValueFromHeader(i.getData(), "currentPacket"));
-                                    }
 
-
-*/
                                         for(ConnectedClient CC : existingClients){
                                             serverSocket.send(new DatagramPacket(buffer, buffer.length, CC.address, CC.port));
                                         }
@@ -183,9 +148,8 @@ public class Server extends Thread {
                             }
 
                             //have now received all packets
-                            //receivedPackets = Methods.serverAssembleMessage(receivedPackets);
                             System.out.println("before assemble method");
-                            //receivedPackets = Methods.serverAssembleMessage(packetsForMessage);
+
                             for(ConnectedClient CC : existingClients){
                                 serverSocket.send(new DatagramPacket(buffer, buffer.length, CC.address, CC.port));
                             }
